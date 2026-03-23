@@ -5,15 +5,22 @@
 ---
 ### 模型建构
 *   **行动方程**：做作业的速度，正比于当前的焦虑程度，并且受限于剩余作业量。
+
     $$ \frac{dx}{dt} = \mu \cdot A(t) \cdot (1 - x(t)) $$
+
     *（$\mu$ 是行动转化率：焦虑转化为行动的能力）*
 
 *   **焦虑方程**：焦虑值的变化率 = 焦虑的产生 - 焦虑的自我缓解。
-    $$ \frac{dA}{dt} = \frac{\alpha \cdot (1 - x(t))}{1 + \gamma(T - t)} - \beta \cdot A(t) $$
+
+    $$ 
+    \frac{dA}{dt} = \frac{\alpha \cdot (1 - x(t))}{1 + \gamma(T - t)} - \beta \cdot A(t) 
+    $$
+
     *（$\alpha$ 是对任务敏感度；$\gamma$ 是拖延患者的“时间麻木系数”；$\beta$ 是自我安慰、打游戏逃避导致焦虑下降的速率）*
 ---
 ### 数据处理
-数据来源：https://github.com/shuyeit/mmpsy-data/tree/main（code\model_data_analyze\data\数据来源.md）
+数据来源：https://github.com/shuyeit/mmpsy-data/tree/main
+文件路径：code\model_data_analyze\data\数据来源.md
 * **第一步处理**：1_data_preprocession.py 对语料数据进行初步提取
 * **第二部处理**：2_data_preprocessing.py 对提取语料用本地大模型提取参数
 * **第三步处理**：analysis.py 进行归一化并线性回归查看方程是否合理
