@@ -5,16 +5,13 @@
 ---
 ### 模型建构
 *   **行动方程**：做作业的速度，正比于当前的焦虑程度，并且受限于剩余作业量。
-
     $$ \frac{dx}{dt} = \mu \cdot A(t) \cdot (1 - x(t)) $$
 
     *（$\mu$ 是行动转化率：焦虑转化为行动的能力）*
 
 *   **焦虑方程**：焦虑值的变化率 = 焦虑的产生 - 焦虑的自我缓解。
-
-    $$ 
-    \frac{dA}{dt} = \frac{\alpha \cdot (1 - x(t))}{1 + \gamma(T - t)} - \beta \cdot A(t) 
-    $$
+    
+    $$ \frac{dA}{dt} = \frac{\alpha \cdot (1 - x(t))}{1 + \gamma(T - t)} - \beta \cdot A(t) $$
 
     *（$\alpha$ 是对任务敏感度；$\gamma$ 是拖延患者的“时间麻木系数”；$\beta$ 是自我安慰、打游戏逃避导致焦虑下降的速率）*
 ---
