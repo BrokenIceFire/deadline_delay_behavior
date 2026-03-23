@@ -17,6 +17,7 @@
 ---
 ### 数据处理
 *数据来源：https://github.com/shuyeit/mmpsy-data/tree/main
+
 *文件路径：code\model_data_analyze\data\数据来源.md
 * **第一步处理**：1_data_preprocession.py 对语料数据进行初步提取
 * **第二部处理**：2_data_preprocessing.py 对提取语料用本地大模型提取参数
