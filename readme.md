@@ -16,9 +16,8 @@
     *（$\alpha$ 是对任务敏感度；$\gamma$ 是拖延患者的“时间麻木系数”；$\beta$ 是自我安慰、打游戏逃避导致焦虑下降的速率）*
 ---
 ### 数据处理
-*数据来源：https://github.com/shuyeit/mmpsy-data/tree/main
-
-*文件路径：code\model_data_analyze\data\数据来源.md
+数据来源：https://github.com/shuyeit/mmpsy-data/tree/main
+文件路径：code\model_data_analyze\data\数据来源.md
 * **第一步处理**：1_data_preprocession.py 对语料数据进行初步提取
 * **第二部处理**：2_data_preprocessing.py 对提取语料用本地大模型提取参数
 * **第三步处理**：analysis.py 进行归一化并线性回归查看方程是否合理

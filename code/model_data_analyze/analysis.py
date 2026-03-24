@@ -22,17 +22,19 @@ mu = []
 alpha = []
 beta = []
 gamma = []
+gad = []
 
 g_mu = []
 g_alpha = []
 g_gamma = []
 g_beta = []
+g_gad = []
 
 def read_function():
     """从 JSON 文件读取预处理数据"""
     global mu, alpha, beta, gamma
     
-    file_path = r'H:\作业截止期限（Deadline）与拖延行为的动力学模型\code\model_data_analyze\data_preprocession.json'
+    file_path = r'C:\Users\Administrator\Documents\deadline_delay_behavior\code\model_data_analyze\preprocessing_data\output.json'
     
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -69,6 +71,12 @@ def read_function():
         print("文件未找到：%s" % file_path)
     except Exception as e:
         print("读取错误：%s" % str(e))
+def read_GAD():
+    with open(r'C:\Users\Administrator\Documents\deadline_delay_behavior\code\model_data_analyze\data\wav_select.json', 'r', encoding='utf-8') as file:
+        data_preprocession = js.load(file)
+    for i,temp in enumerate(data_preprocession):
+        temp_gad = temp["gad-label"]["score"]
+        gad.append(temp_gad)
 
 def data_transform(np_mu, np_alpha, np_beta, np_gamma):
     """数据归一化转换函数"""
@@ -98,6 +106,8 @@ def data_transform(np_mu, np_alpha, np_beta, np_gamma):
         g_beta = data_percent3.fit_transform(np_beta.reshape(-1, 1)).flatten()
         print("  g_beta: [%.4f, %.4f]" % (g_beta.min(), g_beta.max()))
     
+        data_percent4 = MinMaxScaler(feature_range=(0.1, 27))
+        g_gad = data_percent4.fit_transform(np_gad.reshape(-1, 1))
     print("归一化完成:")
     return True
 
@@ -236,6 +246,7 @@ if __name__ == "__main__":
     print("=" * 60)
     
     read_function()
+    read_GAD()
     
     if len(mu) == 0 and len(alpha) == 0 and len(beta) == 0 and len(gamma) == 0:
         print("\n错误：数据读取失败，程序终止")
@@ -244,6 +255,7 @@ if __name__ == "__main__":
         np_alpha = np.array(alpha) if len(alpha) > 0 else np.array([])
         np_beta = np.array(beta) if len(beta) > 0 else np.array([])
         np_gamma = np.array(gamma) if len(gamma) > 0 else np.array([])
+        np_gad = np.array(gad)
         
         print("\n数据概览:")
         if len(np_mu) > 0:
@@ -256,7 +268,7 @@ if __name__ == "__main__":
             print("  gamma: %d 个样本，范围 [%.4f, %.4f]" % (len(np_gamma), np_gamma.min(), np_gamma.max()))
         
         print("\n数据归一化:")
-        if not data_transform(np_mu, np_alpha, np_beta, np_gamma):
+        if not data_transform(np_mu, np_alpha, np_beta, np_gamma, np_gad):
             print("\n归一化失败，程序终止")
         else:
             # 分别对三个参数进行独立分析 (排除 gamma)
