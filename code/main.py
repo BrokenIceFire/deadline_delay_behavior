@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error, median_absolute_error
 
 class DynamicModel:
     def __init__(self, mu, alpha, beta, T_deadline, y0):
