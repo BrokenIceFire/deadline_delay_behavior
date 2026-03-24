@@ -64,6 +64,7 @@ class DynamicModel:
                      
     def procrastination_model(self, y, t, mu, alpha, gamma, beta, T):
         x, A = y
+        
         dxdt = mu * A * (1 - x)
         time_pressure = (alpha * (1 - x)) / (1 + gamma * (T - t))
         dAdt = time_pressure - beta * A
