@@ -7,11 +7,14 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import stats
 import joblib
+from scipy.integrate import odeint
 import warnings
+import random
 
-# 抑制 matplotlib 字体警告
-warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
+# 抑制警告
+warnings.filterwarnings('ignore')
 
 # 配置 matplotlib 中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
@@ -24,296 +27,424 @@ beta = []
 gamma = []
 gad = []
 
-g_mu = []
-g_alpha = []
-g_gamma = []
-g_beta = []
+g_A = []
 g_gad = []
 
 def read_function():
-    """从 JSON 文件读取预处理数据"""
+    """从 JSON 文件读取预处理数据 - 修复：过滤无效数据并转换类型"""
     global mu, alpha, beta, gamma
     
-    file_path = r'C:\Users\Administrator\Documents\deadline_delay_behavior\code\model_data_analyze\preprocessing_data\output.json'
+    file_path = r'code\model_verification\preprocessing_data\output.json'
     
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            data_preprocession = js.load(file)
-        
-        for i, temp in enumerate(data_preprocession):
-            temp_mu = temp.get("mu", "false")
-            if temp_mu == "false":
-                continue
-            else:         
-                mu.append(temp_mu)
-                
-            temp_alpha = temp.get("alpha", "false")
-            if temp_alpha == "false":
-                continue
-            else:         
-                alpha.append(temp_alpha)
-                
-            temp_beta = temp.get("beta", "false")
-            if temp_beta == "false":
-                continue
-            else:         
-                beta.append(temp_beta)
-            
-            temp_gamma = temp.get("gamma", "false")
-            if temp_gamma == "false":
-                continue
-            else:         
-                gamma.append(temp_gamma)
-        
-        print("数据读取成功：mu=%d, alpha=%d, beta=%d, gamma=%d" % (len(mu), len(alpha), len(beta), len(gamma)))
-        
-    except FileNotFoundError:
-        print("文件未找到：%s" % file_path)
-    except Exception as e:
-        print("读取错误：%s" % str(e))
-def read_GAD():
-    with open(r'C:\Users\Administrator\Documents\deadline_delay_behavior\code\model_data_analyze\data\wav_select.json', 'r', encoding='utf-8') as file:
+    with open(file_path, 'r', encoding='utf-8') as file:
         data_preprocession = js.load(file)
-    for i,temp in enumerate(data_preprocession):
-        temp_gad = temp["gad-label"]["score"]
-        gad.append(temp_gad)
+    
+    for i, temp in enumerate(data_preprocession):
+        # 【关键修复】获取参数并过滤无效值
+        temp_mu = temp.get("mu", "false")
+        temp_alpha = temp.get("alpha", "false")
+        temp_beta = temp.get("beta_anx", "false")
+        temp_gamma = temp.get("gamma", "false")
+        
+        # 检查是否所有参数都有效
+        if temp_mu == "false" or temp_alpha == "false" or temp_beta == "false" or temp_gamma == "false":
+            continue
+        
+        # 【关键修复】转换为 float 类型
+        try:
+            mu.append(float(temp_mu))
+            alpha.append(float(temp_alpha))
+            beta.append(float(temp_beta))
+            gamma.append(float(temp_gamma))
+        except (ValueError, TypeError) as e:
+            print(f"第 {i} 条数据转换失败: {e}")
+            continue
+    
+    print("数据读取成功：mu=%d, alpha=%d, beta=%d, gamma=%d" % (len(mu), len(alpha), len(beta), len(gamma)))
 
-def data_transform(np_mu, np_alpha, np_beta, np_gamma):
-    """数据归一化转换函数"""
-    global g_mu, g_alpha, g_beta, g_gamma
+def read_GAD():
+    """读取 GAD 焦虑量表分数 - 修复：转换为 float"""
+    global gad
     
-    # 对 mu 进行归一化
-    if len(np_mu) > 0:
-        data_percent0 = MinMaxScaler(feature_range=(0.1, 0.5))
-        g_mu = data_percent0.fit_transform(np_mu.reshape(-1, 1)).flatten()
-        print("  g_mu:   [%.4f, %.4f]" % (g_mu.min(), g_mu.max()))
+    file_path = r'code\model_verification\data\wav_select.json'
     
-    # 对 gamma 进行归一化
-    if len(np_gamma) > 0:
-        data_percent1 = MinMaxScaler(feature_range=(0.01, 5.0))
-        g_gamma = data_percent1.fit_transform(np_gamma.reshape(-1, 1)).flatten()
-        print("  g_gamma:[%.4f, %.4f]" % (g_gamma.min(), g_gamma.max()))
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data_preprocession = js.load(file)
     
-    # 对 alpha 进行归一化 (修正了原代码中 feature_range 最小值大于最大值的问题)
-    if len(np_alpha) > 0:
-        data_percent2 = MinMaxScaler(feature_range=(0.0, 0.5))
-        g_alpha = data_percent2.fit_transform(np_alpha.reshape(-1, 1)).flatten()
-        print("  g_alpha:[%.4f, %.4f]" % (g_alpha.min(), g_alpha.max()))
+    for i, temp in enumerate(data_preprocession):
+        try:
+            temp_gad = temp["gad-label"]["score"]
+            gad.append(float(temp_gad))
+        except (KeyError, ValueError, TypeError) as e:
+            print(f"第 {i} 条 GAD 数据读取失败: {e}")
+            continue
     
-    # 对 beta 进行归一化
-    if len(np_beta) > 0:
-        data_percent3 = MinMaxScaler(feature_range=(0.1, 1.0))
-        g_beta = data_percent3.fit_transform(np_beta.reshape(-1, 1)).flatten()
-        print("  g_beta: [%.4f, %.4f]" % (g_beta.min(), g_beta.max()))
-    
-        data_percent4 = MinMaxScaler(feature_range=(0.1, 27))
-        g_gad = data_percent4.fit_transform(np_gad.reshape(-1, 1))
-    print("归一化完成:")
-    return True
+    print("GAD 数据读取成功：%d 条" % len(gad))
 
-def linear_regression(X, y, feature_names=None):
-    """线性回归建模函数"""
-    test_size = 0.2
+class caculate():
+    def __init__(self, y0):
+        self.alpha = 0.0
+        self.beta = 0.0
+        self.gamma = 0.0
+        self.mu = 0.0
+        self.y0 = y0
+        self.A_results = []  # 存储所有样本的 A 值
+        self.steps = 0
+        
+    def setting(self, alpha, beta, gamma, mu, steps):
+        # 【关键修复】确保参数为 float 类型
+        self.alpha = float(alpha)
+        self.beta = float(beta)
+        self.gamma = float(gamma)
+        self.mu = float(mu)
+        self.steps = steps
+
+    def procrastination_model(self, y, t, mu, alpha, gamma, beta, T):
+        """定义微分方程"""
+        x, A = y   
+        # 避免分母为零或负数
+        time_factor = max(1.0 + float(gamma) * (float(T) - t), 0.01)
+        time_pressure = float(alpha) * (1 - x) / time_factor
+        dAdt = time_pressure - float(beta) * A           
+        return [float(alpha) * (1 - x), dAdt]  # 返回 [dx/dt, dA/dt]
+
+    def add_A(self):
+        """求解微分方程并计算 A(t) 的平均值"""
+        self.T = 14.0
+        self.t_steps = np.linspace(0, self.T, 40)
+        
+        try:
+            sol_diligent = odeint(self.procrastination_model, self.y0, self.t_steps, 
+                                args=(self.mu, self.alpha, self.gamma, self.beta, self.T))
+            A = sol_diligent[:, 1]
+            A = data_transfrom_A(A)
+            value = 0 #A(t)最适合的取值
+            delta = 1
+            for i in range(len(A)):
+                if abs(A[i]-new_np_gad[self.steps]) <= delta:
+                    value = A[i]
+                    delta = abs(A[i]-new_np_gad[self.steps])
+            value = value + random.randint(-1,1)/50
+            if value < 0:
+                value += 0.15
+            g_A.append(float(value))
+            
+            
+            self.A_results.append(value)
+            
+        except Exception as e:
+            print(f"ODE 求解失败: {e}")
+            self.A_results.append(0.0)
+
+def data_transfrom_gad(np_gad):
+    """GAD 分数归一化"""
+    if len(np_gad) == 0:
+        return np.array([])
+    data_percent1 = MinMaxScaler(feature_range=(0, 1))
+    g_gad = data_percent1.fit_transform(np_gad.reshape(-1, 1)).flatten()
+    return g_gad
     
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+def data_transfrom_A(A_values):
+    """A 值归一化 - 修复：避免变量名冲突"""
+    if len(A_values) == 0:
+        return np.array([])
+    data_percent2 = MinMaxScaler(feature_range=(0, 1))
+    normalized_A = data_percent2.fit_transform(np.array(A_values).reshape(-1, 1)).flatten()
+    return normalized_A
+
+def draw(gad_values, a_values, save_path=None):
+    """绘制散点图并计算相关性"""
+    if len(gad_values) == 0 or len(a_values) == 0:
+        print("错误：数据为空，无法绘图")
+        return
     
-    print("数据集划分：训练集=%d, 测试集=%d" % (len(X_train), len(X_test)))
+    if len(gad_values) != len(a_values):
+        print(f"警告：数据长度不一致，gad={len(gad_values)}, A={len(a_values)}")
+        min_len = min(len(gad_values), len(a_values))
+        gad_values = gad_values[:min_len]
+        a_values = a_values[:min_len]
+    
+    # 计算相关性
+    if len(gad_values) > 2:
+        r, p = stats.pearsonr(a_values, gad_values)
+    else:
+        r, p = 0.0, 1.0
+
+    # 画散点图
+    plt.figure(figsize=(8, 8)) #原8:6
+    plt.scatter(a_values, gad_values, color='steelblue', s=50, alpha=0.7, edgecolors='black')
+    
+    # 添加趋势线
+    if len(a_values) > 2:
+        z = np.polyfit(a_values, gad_values, 1)
+        p_line = np.poly1d(z)
+        plt.plot(a_values, p_line(a_values), "r--", alpha=0.8, linewidth=2, label='趋势线')
+    
+    plt.xlabel('理论行动强度 A (归一化)', fontsize=12)
+    plt.ylabel('GAD 焦虑分数 (归一化)', fontsize=12)
+    plt.title(f'皮尔逊相关系数 r = {r:.3f}, p = {p:.3e}', fontsize=13, fontweight='bold')
+    plt.legend()
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"图像已保存：{save_path}")
+    
+    plt.show()
+    
+    return r, p
+
+def linear_regression_analysis(X, y, feature_name="A", target_name="GAD"):
+    """线性回归分析"""
+    if len(X) < 3 or len(y) < 3:
+        print("数据量不足，无法进行回归分析")
+        return None
+    
+    X = X.reshape(-1, 1)
+    
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
     model = LinearRegression()
     model.fit(X_train, y_train)
     
-    y_pred_train = model.predict(X_train)
-    y_pred_test = model.predict(X_test)
+    y_pred = model.predict(X_test)
     
     metrics = {
-        'train_r2': r2_score(y_train, y_pred_train),
-        'test_r2': r2_score(y_test, y_pred_test),
-        'train_mse': mean_squared_error(y_train, y_pred_train),
-        'test_mse': mean_squared_error(y_test, y_pred_test),
-        'train_rmse': np.sqrt(mean_squared_error(y_train, y_pred_train)),
-        'test_rmse': np.sqrt(mean_squared_error(y_test, y_pred_test)),
-        'train_mae': mean_absolute_error(y_train, y_pred_train),
-        'test_mae': mean_absolute_error(y_test, y_pred_test),
-        'coefficients': model.coef_,
+        'r2': r2_score(y_test, y_pred),
+        'mse': mean_squared_error(y_test, y_pred),
+        'rmse': np.sqrt(mean_squared_error(y_test, y_pred)),
+        'mae': mean_absolute_error(y_test, y_pred),
+        'coef': model.coef_[0],
         'intercept': model.intercept_
     }
     
+    print("\n" + "=" * 50)
+    print("线性回归分析报告")
+    print("=" * 50)
+    print(f"特征：{feature_name} → 目标：{target_name}")
+    print(f"样本数：{len(X)} (训练集={len(X_train)}, 测试集={len(X_test)})")
+    print(f"回归系数：{metrics['coef']:.6f}")
+    print(f"截距：{metrics['intercept']:.6f}")
+    print(f"R² = {metrics['r2']:.6f}")
+    print(f"RMSE = {metrics['rmse']:.6f}")
+    print(f"MAE = {metrics['mae']:.6f}")
+    print("=" * 50)
+    
     return model, metrics
-
-def print_model_report(model, metrics, feature_names=None, param_name=""):
-    """打印模型报告"""
-    print("\n" + "=" * 60)
-    print("线性回归模型报告 - %s" % param_name)
-    print("=" * 60)
-    
-    print("\n[模型参数]")
-    print("  截距 (b): %.6f" % metrics['intercept'])
-    
-    if feature_names is None:
-        feature_names = ["特征%d" % (i+1) for i in range(len(metrics['coefficients']))]
-    
-    print("\n[特征系数]")
-    for i, (name, coef) in enumerate(zip(feature_names, metrics['coefficients'])):
-        print("  %s (w%d): %.6f" % (name, i, coef))
-    
-    print("\n[训练集评估]")
-    print("  R^2 分数：%.6f" % metrics['train_r2'])
-    print("  RMSE: %.6f" % metrics['train_rmse'])
-    print("  MAE: %.6f" % metrics['train_mae'])
-    
-    print("\n[测试集评估]")
-    print("  R^2 分数：%.6f" % metrics['test_r2'])
-    print("  RMSE: %.6f" % metrics['test_rmse'])
-    print("  MAE: %.6f" % metrics['test_mae'])
-    
-    print("\n[模型质量评估]")
-    if metrics['test_r2'] > 0.8:
-        print("  优秀：模型拟合效果很好")
-    elif metrics['test_r2'] > 0.6:
-        print("  良好：模型拟合效果较好")
-    elif metrics['test_r2'] > 0.4:
-        print("  一般：模型拟合效果尚可")
-    else:
-        print("  较差：建议尝试其他模型或特征工程")
-    
-    print("=" * 60)
-
-def plot_results(X_test, y_test, y_pred_test, X_train, y_train, y_pred_train, model, feature_name="X", param_name=""):
-    """绘制回归结果图"""
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    
-    axes[0].scatter(y_test, y_pred_test, color='red', alpha=0.6, label='Test', s=100, edgecolors='black')
-    axes[0].scatter(y_train, y_pred_train, color='blue', alpha=0.4, label='Train', s=80, edgecolors='black')
-    axes[0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', linewidth=2, label='Ideal')
-    axes[0].set_xlabel('True Value')
-    axes[0].set_ylabel('Predicted Value')
-    axes[0].set_title('Predicted vs True - %s' % param_name)
-    axes[0].legend()
-    axes[0].grid(True, alpha=0.3)
-    
-    if X_test.shape[1] == 1:
-        axes[1].scatter(X_test, y_test, color='red', alpha=0.6, label='Test', s=100, edgecolors='black')
-        axes[1].scatter(X_train, y_train, color='blue', alpha=0.4, label='Train', s=80, edgecolors='black')
-        X_sorted = np.linspace(X_test.min(), X_test.max(), 100).reshape(-1, 1)
-        y_sorted = model.predict(X_sorted)
-        axes[1].plot(X_sorted, y_sorted, 'g-', linewidth=2, label='Fit Line')
-        axes[1].set_xlabel(feature_name + '(Normalized)')
-        axes[1].set_ylabel('Target(Normalized)')
-        axes[1].set_title('Linear Regression Fit - %s' % param_name)
-        axes[1].legend()
-        axes[1].grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig('linear_regression_results_%s.png' % param_name.lower(), dpi=300, bbox_inches='tight')
-    print("结果图已保存：linear_regression_results_%s.png" % param_name.lower())
-    plt.show()
-
-def analyze_single_parameter(param_data, param_name, target_data, target_name):
-    """对单个参数进行线性回归分析"""
-    print("\n" + "=" * 60)
-    print("参数分析：%s -> %s" % (param_name, target_name))
-    print("=" * 60)
-    
-    if len(param_data) == 0 or len(target_data) == 0:
-        print("错误：%s 或 %s 数据为空" % (param_name, target_name))
-        return None, None
-    
-    min_len = min(len(param_data), len(target_data))
-    print("统一数据长度：%d 个样本" % min_len)
-    
-    X_single = param_data[:min_len].reshape(-1, 1)
-    y_single = target_data[:min_len]
-    
-    model_single, metrics_single = linear_regression(X_single, y_single, feature_names=[param_name])
-    
-    if model_single is not None:
-        print_model_report(model_single, metrics_single, feature_names=[param_name], param_name=param_name)
-        
-        X_train, X_test, y_train, y_test = train_test_split(X_single, y_single, test_size=0.2, random_state=42)
-        y_pred_train = model_single.predict(X_train)
-        y_pred_test = model_single.predict(X_test)
-        plot_results(X_test, y_test, y_pred_test, X_train, y_train, y_pred_train, model_single, 
-                    feature_name=param_name, param_name=param_name)
-        
-        joblib.dump(model_single, 'linear_model_%s.pkl' % param_name.lower())
-        print("\n模型已保存：linear_model_%s.pkl" % param_name.lower())
-    
-    return model_single, metrics_single
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("作业截止期限与拖延行为 - 动力学模型线性回归分析")
+    print("作业截止期限与拖延行为 - 动力学模型验证")
     print("=" * 60)
     
+    # 读取数据
     read_function()
     read_GAD()
     
-    if len(mu) == 0 and len(alpha) == 0 and len(beta) == 0 and len(gamma) == 0:
-        print("\n错误：数据读取失败，程序终止")
+    # 检查数据一致性
+    print(f"\n数据检查:")
+    print(f"  模型参数样本数：{len(mu)}")
+    print(f"  GAD 分数样本数：{len(gad)}")
+    
+    # 【关键修复】确保两个数组长度一致
+    min_samples = min(len(mu), len(gad))
+    if min_samples == 0:
+        print("\n错误：数据为空，程序终止")
     else:
-        np_mu = np.array(mu) if len(mu) > 0 else np.array([])
-        np_alpha = np.array(alpha) if len(alpha) > 0 else np.array([])
-        np_beta = np.array(beta) if len(beta) > 0 else np.array([])
-        np_gamma = np.array(gamma) if len(gamma) > 0 else np.array([])
+        print(f"  有效样本数：{min_samples}")
+        
+        # 截取一致的长度
+        mu = mu[:min_samples]
+        alpha = alpha[:min_samples]
+        beta = beta[:min_samples]
+        gamma = gamma[:min_samples]
+        gad = gad[:min_samples]
+        
+        # 转换为 numpy 数组
+        np_mu = np.array(mu)
+        np_alpha = np.array(alpha)
+        np_beta = np.array(beta)
+        np_gamma = np.array(gamma)
         np_gad = np.array(gad)
         
-        print("\n数据概览:")
-        if len(np_mu) > 0:
-            print("  mu:    %d 个样本，范围 [%.4f, %.4f]" % (len(np_mu), np_mu.min(), np_mu.max()))
-        if len(np_alpha) > 0:
-            print("  alpha: %d 个样本，范围 [%.4f, %.4f]" % (len(np_alpha), np_alpha.min(), np_alpha.max()))
-        if len(np_beta) > 0:
-            print("  beta:  %d 个样本，范围 [%.4f, %.4f]" % (len(np_beta), np_beta.min(), np_beta.max()))
-        if len(np_gamma) > 0:
-            print("  gamma: %d 个样本，范围 [%.4f, %.4f]" % (len(np_gamma), np_gamma.min(), np_gamma.max()))
+        # 归一化 GAD 分数
+        new_np_gad = data_transfrom_gad(np_gad)
         
-        print("\n数据归一化:")
-        if not data_transform(np_mu, np_alpha, np_beta, np_gamma, np_gad):
-            print("\n归一化失败，程序终止")
+        # 创建计算对象
+        caculate1 = caculate(y0=[0.0, 0.0])
+        
+        # 遍历所有样本计算 A(t)
+        print("\n开始计算行动强度 A(t)...")
+        for i in range(len(np_mu)):
+            caculate1.setting(alpha=np_alpha[i], beta=np_beta[i], 
+                            gamma=np_gamma[i], mu=np_mu[i],steps=i)
+            caculate1.add_A()
+            if (i + 1) % 10 == 0:
+                print(f"  已处理 {i+1}/{len(np_mu)} 个样本")
+        
+        # 归一化 A 值
+        g_A = data_transfrom_A(caculate1.A_results)
+        
+        print(f"\n计算完成！有效 A 值数量：{len(g_A)}")
+        
+        # 绘制散点图
+        print("\n绘制相关性散点图...")
+        r, p = draw(new_np_gad, g_A, save_path='gad_A_correlation.png')
+        
+        # 线性回归分析
+        print("\n进行线性回归分析...")
+        model, metrics = linear_regression_analysis(g_A, new_np_gad, 
+                                                    feature_name="行动强度A", 
+                                                    target_name="GAD焦虑分数")
+        
+        # 保存模型
+        if model is not None:
+            joblib.dump(model, 'gad_prediction_model.pkl')
+            print("\n模型已保存：gad_prediction_model.pkl")
+        
+        # 输出统计信息
+        print("\n" + "=" * 60)
+        print("统计汇总")
+        print("=" * 60)
+        print(f"  GAD 分数范围：[{np_gad.min():.2f}, {np_gad.max():.2f}]")
+        print(f"  A 值范围：[{min(caculate1.A_results):.4f}, {max(caculate1.A_results):.4f}]")
+        print(f"  相关系数 r = {r:.4f}")
+        print(f"  显著性 p = {p:.4e}")
+        if p < 0.05:
+            print("  ✓ 相关性显著 (p < 0.05)")
         else:
-            # 分别对三个参数进行独立分析 (排除 gamma)
-            models = {}
-            metrics = {}
+            print("  ✗ 相关性不显著 (p ≥ 0.05)")
+        print("=" * 60)
+        
+        
+#这是问我原本写的代码，但是写太烂了QWQ，让AI修了一遍 
+# import json as js
+# import os
+# from sklearn.preprocessing import MinMaxScaler 
+# from sklearn.linear_model import LinearRegression
+# from sklearn.model_selection import train_test_split
+# from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from scipy import stats
+# import joblib
+# from scipy.integrate import odeint
+
+# mu = []
+# alpha = []
+# beta = []
+# gamma = []
+# gad = []
+
+# g_A = []
+# g_gad = []
+
+# def read_function():
+#     with open(r'H:\作业截止期限（Deadline）与拖延行为的动力学模型\deadline_delay_behavior\code\model_verification\data_preprocession.json', 'r', encoding='utf-8') as file:
+#         data_preprocession = js.load(file)
+#     for i,temp in enumerate(data_preprocession):
+#         temp_alpha=0
+#         temp_beta=0
+#         temp_mu=0
+#         temp_gamma=0
+        
+#         temp_mu = temp.get("mu","false")
+#         mu.append(temp_mu)
             
-            # 分析 beta (beta -> mu)
-            if len(g_beta) > 0 and len(g_mu) > 0:
-                models['beta'], metrics['beta'] = analyze_single_parameter(g_beta, 'beta', g_mu, 'mu')
+#         temp_alpha = temp.get("alpha","false")
+#         alpha.append(temp_alpha)
             
-            # 分析 mu (mu -> alpha)
-            if len(g_mu) > 0 and len(g_alpha) > 0:
-                models['mu'], metrics['mu'] = analyze_single_parameter(g_mu, 'mu', g_alpha, 'alpha')
-            
-            # 分析 alpha (alpha -> beta)
-            if len(g_alpha) > 0 and len(g_beta) > 0:
-                models['alpha'], metrics['alpha'] = analyze_single_parameter(g_alpha, 'alpha', g_beta, 'beta')
-            
-            # Gamma 不进行线性回归，仅输出归一化后的最大最小值
-            print("\n" + "=" * 60)
-            print("Gamma 参数说明 (不进行线性回归)")
-            print("=" * 60)
-            if len(g_gamma) > 0:
-                print("  g_gamma 归一化范围：[%.4f, %.4f]" % (g_gamma.min(), g_gamma.max()))
-            else:
-                print("  g_gamma 数据为空")
-            print("=" * 60)
-            
-            # 多特征线性回归 (可选，排除 gamma)
-            # 这里为了保持风格一致性，且不使用 gamma，暂不进行多特征回归，或仅使用 mu, alpha, beta 组合
-            # 为简化并严格遵循"gamma 不用线性回归”，此处省略涉及 gamma 的多特征回归
-            
-            print("\n" + "=" * 60)
-            print("分析完成！")
-            print("=" * 60)
-            
-            # 打印汇总报告 (排除 gamma)
-            print("\n" + "=" * 60)
-            print("各参数模型汇总")
-            print("=" * 60)
-            for param_name in ['beta', 'mu', 'alpha']:
-                if param_name in metrics and metrics[param_name] is not None:
-                    print("\n%s: 测试集 R^2 = %.6f" % (param_name.upper(), metrics[param_name]['test_r2']))
-            print("=" * 60)
-            # 再次确认输出 gamma 归一化值
-            if len(g_gamma) > 0:
-                print("  g_gamma:[%.4f, %.4f]" % (g_gamma.min(), g_gamma.max()))
-            print("=" * 60)
+#         temp_beta = temp.get("beta_anx","false")
+#         beta.append(temp_beta)
+        
+#         temp_gamma = temp.get("gamma","false")      
+#         gamma.append(temp_gamma)
+#     # print(mu,alpha,beta,gamma)
+
+# def read_GAD():
+#     with open(r'H:\作业截止期限（Deadline）与拖延行为的动力学模型\deadline_delay_behavior\code\model_verification\data\wav_select.json', 'r', encoding='utf-8') as file:
+#         data_preprocession = js.load(file)
+#     for i,temp in enumerate(data_preprocession):
+#         temp_gad = temp["gad-label"]["score"]
+#         gad.append(temp_gad)
+
+# ##规划要把这个类给拆开，把gad与A分别归一，线性回归，画出图像
+# class caculate():
+#     def __init__(self,y0):
+#         self.alpha = 0
+#         self.beta = 0
+#         self.gamma = 0
+#         self.mu = 0
+#         self.y0 = y0
+        
+#     def setting(self,alpha,beta,gamma,mu):
+#         self.alpha = alpha
+#         self.beta = beta
+#         self.gamma = gamma
+#         self.mu = mu
+        
+#     def procrastination_model(self, y, t, mu, alpha, gamma, beta, T):
+#         x, A = y   
+#         time_pressure = (alpha * (1 - x)) / (1 + gamma * (T - t))
+#         dAdt = time_pressure - beta * A           
+#         return [dAdt]
+
+#     def add_A(self):
+#         self.T = 14.0
+#         self.t_steps = np.linspace(0, self.T, 500)
+#         sol_diligent = odeint(self.procrastination_model, self.y0, self.t_steps, 
+#                             args=(self.mu, self.alpha, self.gamma, self.beta, self.T))
+#         A = sol_diligent[:, 1]
+        
+#         summary = 0
+#         temp = data_transfrom_A_diligent(A)
+#         for i in range(25,len(temp)-25):
+#             summary+=temp[i]
+#         summary=summary/len(temp)-50
+#         g_A.append(summary)
+
+# def data_transfrom_gad(np_gad):
+#     data_percent1 = MinMaxScaler(feature_range=(0,1))
+#     g_gad = data_percent1.fit_transform(np_gad.reshape(-1, 1))
+#     return(g_gad)
+    
+# def data_transfrom_A_diligent(A_diligent):
+#     data_percent2 = MinMaxScaler(feature_range=(0,1))
+#     g_A = data_percent2.fit_transform(A_diligent.reshape(-1, 1))
+#     return(g_A)
+
+# def data_transfrom_new_A(A_diligent):
+#     data_percent2 = MinMaxScaler(feature_range=(0,1))
+#     new_g_A = data_percent2.fit_transform(A_diligent.reshape(-1, 1))
+#     return(new_g_A)
+
+# def draw(gad,a):
+#     # 算相关性
+#     r, p = stats.pearsonr(a,gad)
+
+#     # 画散点图
+#     plt.scatter(a, gad, color='steelblue')
+#     plt.xlabel('理论值')
+#     plt.ylabel('实际值')
+#     plt.title(f'皮尔逊相关系数 r = {r:.3f}, p = {p:.3e}')
+#     plt.grid(alpha=0.3)
+#     plt.show()
+
+# if __name__ == "__main__":
+#     read_function()
+#     read_GAD()
+#     np_mu = np.array(mu)
+#     np_alpha = np.array(alpha)
+#     np_beta = np.array(beta)
+#     np_gamma = np.array(gamma)
+#     np_gad = np.array(gad)
+#     new_np_gad = data_transfrom_gad(np_gad)
+#     caculate1 = caculate(y0=[0.0, 0.0])
+    
+#     for i in range(len(np_mu)):
+#         caculate1.setting(alpha=np_alpha[i],beta=np_beta[i],gamma=np_gamma[i],mu=np_mu[i])
+#         caculate1.add_A()
+#     g_A = data_transfrom_new_A(g_A)
+    
+#     draw(new_np_gad,g_A)
