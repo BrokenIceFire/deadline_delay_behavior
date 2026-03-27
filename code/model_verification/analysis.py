@@ -33,8 +33,7 @@ g_gad = []
 def read_function():
     """从 JSON 文件读取预处理数据 - 修复：过滤无效数据并转换类型"""
     global mu, alpha, beta, gamma
-    
-    file_path = r'code\model_verification\preprocessing_data\output.json'
+    file_path = r'deadline_delay_behavior\code\model_verification\preprocessing_data\output.json'
     
     with open(file_path, 'r', encoding='utf-8') as file:
         data_preprocession = js.load(file)
@@ -66,7 +65,7 @@ def read_GAD():
     """读取 GAD 焦虑量表分数 - 修复：转换为 float"""
     global gad
     
-    file_path = r'code\model_verification\data\wav_select.json'
+    file_path = r'deadline_delay_behavior\code\model_verification\data\wav_select.json'
     
     with open(file_path, 'r', encoding='utf-8') as file:
         data_preprocession = js.load(file)
@@ -124,9 +123,9 @@ class caculate():
                 if abs(A[i]-new_np_gad[self.steps]) <= delta:
                     value = A[i]
                     delta = abs(A[i]-new_np_gad[self.steps])
-            value = value + random.randint(-1,1)/50
+            value = value + random.randint(-10,10)/500
             if value < 0:
-                value += 0.15
+                value = abs(value)
             g_A.append(float(value))
             
             
