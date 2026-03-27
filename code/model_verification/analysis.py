@@ -341,7 +341,7 @@ if __name__ == "__main__":
 # g_gad = []
 
 # def read_function():
-#     with open(r'H:\作业截止期限（Deadline）与拖延行为的动力学模型\deadline_delay_behavior\code\model_verification\data_preprocession.json', 'r', encoding='utf-8') as file:
+#     with open(r'deadline_delay_behavior\code\model_verification\data_preprocession.json', 'r', encoding='utf-8') as file:
 #         data_preprocession = js.load(file)
 #     for i,temp in enumerate(data_preprocession):
 #         temp_alpha=0
@@ -363,7 +363,7 @@ if __name__ == "__main__":
 #     # print(mu,alpha,beta,gamma)
 
 # def read_GAD():
-#     with open(r'H:\作业截止期限（Deadline）与拖延行为的动力学模型\deadline_delay_behavior\code\model_verification\data\wav_select.json', 'r', encoding='utf-8') as file:
+#     with open(r'deadline_delay_behavior\code\model_verification\data\wav_select.json', 'r', encoding='utf-8') as file:
 #         data_preprocession = js.load(file)
 #     for i,temp in enumerate(data_preprocession):
 #         temp_gad = temp["gad-label"]["score"]

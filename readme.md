@@ -54,6 +54,10 @@ def procrastination_model(y, t, mu, alpha, gamma, beta, T):
     return [dxdt, dAdt]
 ```
 ---
+### 原模型结果展示图
+![模型结果](Figure_1.png)
+
+---
 ### 线性回归结果展示
 ![拟合直线图](gad_A_correlation.png)
 
