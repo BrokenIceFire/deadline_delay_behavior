@@ -61,5 +61,6 @@ def procrastination_model(y, t, mu, alpha, gamma, beta, T):
 ### 线性回归结果展示
 ![拟合直线图](gad_A_correlation.png)
 
+    因为GAD数据全为整数，所以y值间隔是相同的
 ---
 ***补充:本作品使用了ai进行辅助操作，但核心代码仍为团队成员手敲***

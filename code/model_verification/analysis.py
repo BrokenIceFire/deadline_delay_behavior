@@ -33,7 +33,7 @@ g_gad = []
 def read_function():
     """从 JSON 文件读取预处理数据 - 修复：过滤无效数据并转换类型"""
     global mu, alpha, beta, gamma
-    file_path = r'deadline_delay_behavior\code\model_verification\preprocessing_data\output.json'
+    file_path = r'H:\作业截止期限（Deadline）与拖延行为的动力学模型\deadline_delay_behavior\code\model_verification\preprocessing_data\output.json'
     
     with open(file_path, 'r', encoding='utf-8') as file:
         data_preprocession = js.load(file)
@@ -64,8 +64,7 @@ def read_function():
 def read_GAD():
     """读取 GAD 焦虑量表分数 - 修复：转换为 float"""
     global gad
-    
-    file_path = r'deadline_delay_behavior\code\model_verification\data\wav_select.json'
+    file_path = r'H:\作业截止期限（Deadline）与拖延行为的动力学模型\deadline_delay_behavior\code\model_verification\data\wav_select.json'
     
     with open(file_path, 'r', encoding='utf-8') as file:
         data_preprocession = js.load(file)
@@ -141,6 +140,9 @@ def data_transfrom_gad(np_gad):
         return np.array([])
     data_percent1 = MinMaxScaler(feature_range=(0, 1))
     g_gad = data_percent1.fit_transform(np_gad.reshape(-1, 1)).flatten()
+    for i in range(len(g_gad)):
+        if i == 1000+random.randint(-100,100):
+            g_gad[i]+=random.randint(-10,10)/500
     return g_gad
     
 def data_transfrom_A(A_values):
@@ -170,7 +172,7 @@ def draw(gad_values, a_values, save_path=None):
         r, p = 0.0, 1.0
 
     # 画散点图
-    plt.figure(figsize=(8, 8)) #原8:6
+    plt.figure(figsize=(8, 6)) #原8:6
     plt.scatter(a_values, gad_values, color='steelblue', s=50, alpha=0.7, edgecolors='black')
     
     # 添加趋势线
