@@ -19,7 +19,6 @@ gad = []
 g_A = []
 g_gad = []
 
-#行
 def read_function():
     with open(r'H:\作业截止期限（Deadline）与拖延行为的动力学模型\deadline_delay_behavior\code\model_verification\data_preprocession.json', 'r', encoding='utf-8') as file:
         data_preprocession = js.load(file)

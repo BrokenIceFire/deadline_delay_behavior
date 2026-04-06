@@ -24,7 +24,7 @@ class DynamicModel:
         y[1]: A(t) 焦虑值/压力值
         """
         x, A = y
-        
+
         # 限制 x 最大为 1 (作业写完了就不写了)
         if x >= 1.0:
             dxdt = 0.0
