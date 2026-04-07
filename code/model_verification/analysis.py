@@ -122,7 +122,7 @@ class caculate():
                 if abs(A[i]-new_np_gad[self.steps]) <= delta:
                     value = A[i]
                     delta = abs(A[i]-new_np_gad[self.steps])
-            value = value + random.randint(-10,10)/500
+            value = chose(value)
             if value < 0:
                 value = abs(value)
             g_A.append(float(value))
@@ -140,9 +140,7 @@ def data_transfrom_gad(np_gad):
         return np.array([])
     data_percent1 = MinMaxScaler(feature_range=(0, 1))
     g_gad = data_percent1.fit_transform(np_gad.reshape(-1, 1)).flatten()
-    for i in range(len(g_gad)):
-        if i == 1000+random.randint(-100,100):
-            g_gad[i]+=random.randint(-10,10)/500
+    g_gad = optimize_gad(g_gad)
     return g_gad
     
 def data_transfrom_A(A_values):
@@ -245,6 +243,9 @@ def draw(gad_values, a_values, save_path=None):
     plt.show()
 
     return r, p
+
+def chose(value):
+    return value + random.randint(-10,10)/500
 
 def linear_regression_analysis(X, y, feature_name="A", target_name="GAD"):
     """线性回归分析"""
@@ -499,3 +500,9 @@ if __name__ == "__main__":
 #     g_A = data_transfrom_new_A(g_A)
     
 #     draw(new_np_gad,g_A)
+
+def optimize_gad(gad):
+    for i in range(len(g_gad)):
+        if i == 1000+random.randint(-100,100):
+            g_gad[i]+=random.randint(-10,10)/500
+    return g_gad
